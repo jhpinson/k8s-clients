@@ -1,0 +1,27 @@
+image: docker:latest
+
+stages:
+- build
+- release
+
+before_script:
+- docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+
+build:
+  stage: build
+  script:
+  - docker build -t $CI_REGISTRY_IMAGE:$CI_BUILD_REF .
+  - if [ -z "${CI_BUILD_TAG}" ] && [ "${CI_BUILD_REF_NAME}" != "master" ] && [ "${CI_BUILD_REF_NAME}" != "develop" ]; then echo "Ignore un-tagged commit."; exit 0; fi
+  - echo "push $CI_REGISTRY_IMAGE:$CI_BUILD_REF"
+  - docker push $CI_REGISTRY_IMAGE:$CI_BUILD_REF
+
+release-latest:
+  stage: release
+  script:
+  - docker pull $CI_REGISTRY_IMAGE:$CI_BUILD_REF
+  - docker tag $CI_REGISTRY_IMAGE:$CI_BUILD_REF $CI_REGISTRY_IMAGE:latest
+  - echo "push $CI_REGISTRY_IMAGE:latest"
+  - docker push $CI_REGISTRY_IMAGE:latest
+  only:
+  - master
+  - develop
